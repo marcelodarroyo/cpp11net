@@ -1,4 +1,4 @@
-all: stream_server_example tcp_client
+all: stream_server_example http_server_example tcp_client
 
 tcp_client: tcp_client.hpp tcp_client.cpp
 	g++ -std=c++11 -o $@ tcp_client.cpp

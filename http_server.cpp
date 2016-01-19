@@ -36,10 +36,11 @@ void http_request::parse_request(const std::string & request)
 bool http_request::parse_method(const std::string & request, size_t & pos)
 {	
     _method = get_substring(request, pos, " ");
-    for (auto & c : method)
+    for (auto & c : _method)
         c = toupper(c);
-    if ( method == "GET" || method == "HEAD" || method == "POST" || method == "PUT" || 
-         method == "DELETE" || method == "TRACE" || method == "OPTIONS" ) {
+    // TO DO: Change to use a hash to check valid method
+    if ( _method == "GET" || _method == "HEAD" || _method == "POST" || _method == "PUT" || 
+         _method == "DELETE" || _method == "TRACE" || _method == "OPTIONS" ) {
         _resource = get_substring(request, pos, " ");
         _version = get_substring(request, pos, END_LINE);
         return true;
@@ -68,11 +69,11 @@ void http_service::do_service(peer_connection conn, const http_request & request
     // default service
     std::string body = 
 	    "<html>"
-	    "<head>""
+	    "<head>"
 	    "<title>The Simplest HTTP server.</title>"
 	    "</head>"
 	    "<body>"
-	    "<p>This is the simplest HTTP server.</p>"
+	    "<h1>This is the simplest HTTP server.</h1>"
 	    "</body>"
 	    "</html>";
 	
@@ -136,7 +137,7 @@ void http_server::dispatch_service(http_request const & request, peer_connection
     // TO DO: change to using thread_pool
     
     // search for a registered service
-    auto service = services.find( request.get_resource() );
+    auto service = services.find( request.resource() );
     if ( service != services.end() )
         // registered service found, dispatch it
         service->second.do_service(c,request);

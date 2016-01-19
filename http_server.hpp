@@ -14,7 +14,7 @@ class http_request {
 	
 public:
 	
-    http_request() : valid_request(false) {}
+    http_request() : _valid_request(false) {}
     http_request(const std::string & request) { parse_request(request); }
 
     std::string method() const { return _method; }

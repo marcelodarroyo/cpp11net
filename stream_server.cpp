@@ -27,7 +27,12 @@ peer_connection & peer_connection::operator=(peer_connection & other)
    peer_port = other.get_peer_port();
    return *this;
 }
-	
+
+int peer_connection::send(char* data, size_t count)
+{
+   return write(s, data, count);
+}
+
 int peer_connection::send(std::vector<unsigned char> data)
 {
    return write(s, data.data(), data.size());
@@ -36,6 +41,11 @@ int peer_connection::send(std::vector<unsigned char> data)
 int peer_connection::send(std::string data)
 {
    return write(s, data.c_str(), data.size());
+}
+
+int peer_connection::receive(char * buffer, size_t count)
+{
+    return read(s, buffer, count);
 }
 
 std::vector<unsigned char> peer_connection::receive(int max_length)
@@ -130,3 +140,5 @@ void launch_service(peer_connection & c, service_fun_t service)
         // in parent process, reap zombies
         signal(SIGCHLD,SIG_IGN);
 }
+
+// vim: set tabstop=4 shiftwidth=4 expandtab:

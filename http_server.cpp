@@ -8,6 +8,7 @@
 #include <string>
 #include <ctype.h>	// for toupper(), isdigit(), ...
 #include <fstream>
+#include <iostream>
 
 #include "http_server.hpp"
 
@@ -44,6 +45,8 @@ bool http_request::parse_method(const std::string & request, size_t & pos)
          _method == "DELETE" || _method == "TRACE" || _method == "OPTIONS" ) {
         _url = get_substring(request, pos, " ");
         _version = get_substring(request, pos, END_LINE);
+        if ( _version != "HTTP/1.0" && _version != "HTTP/1.1" )
+            return false;
         return true;
     }
     return false;
@@ -98,12 +101,11 @@ std::string http_request::mime() const
 
 std::string http_request::path() const
 {
-    std::string::size_type 
-        begin_pos = _url.find("/"), 
-        end_pos = _url.find("?"),
-        count;
+    std::string::size_type begin_pos = _url.find("/"), 
+                           end_pos = _url.find("?"),
+                           count;
     // skip protocol (if exist)
-    if ( begin_pos > 0 && _url[begin_pos-1] == ':' )
+    if ( begin_pos != std::string::npos && _url[begin_pos-1] == ':' )
         begin_pos = _url.find("/", begin_pos + 2 );
     count = (end_pos != std::string::npos)? end_pos - begin_pos : end_pos;
     return _url.substr(begin_pos, count);
@@ -113,10 +115,9 @@ std::string http_request::path() const
 std::map<std::string,std::string> http_request::query() const
 {
     std::map<std::string,std::string> query_map;
-    std::string::size_type 
-        begin_pos = _url.find("?"), 
-        end_pos = _url.find("=");
-    while ( begin_pos < _url.size() ) {
+    std::string::size_type begin_pos = _url.find("?"), 
+                           end_pos = _url.find("=");
+    while ( begin_pos < _url.length() ) {
         std::string q = _url.substr(begin_pos+1, end_pos);
         std::string v;
         if ( end_pos != std::string::npos ) {
@@ -133,7 +134,7 @@ std::map<std::string,std::string> http_request::query() const
 std::string http_request::header(std::string key) const
 {
     auto it = _headers.find(key); 
-    return ( it != _headers.end() )? it->second : std::string();
+    return ( it != _headers.end() )? it->second : "";
 }
 
 //=============================================================================
@@ -144,8 +145,12 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
     std::string resource = request.path();
     std::string mime = request.mime();
 
+    if (request.method() != "GET")
+        respond_error(conn, 501);
+
     if (resource == "/")
         resource = "index.html";
+
     // get filesize
     std::ifstream f(files_dir + resource, std::ifstream::ate | std::ifstream::binary);
     if ( ! f.is_open() ) {
@@ -175,21 +180,20 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
         const unsigned int buf_size = 4096;
         char buffer[buf_size];
         f.read(buffer,buf_size);
-        conn.send(buffer, f.gcount());
+        conn.send(buffer);
     }
     f.close();
 }
 
 std::string http_service::get_error_code_str(int error_code)
 {
-    std::string result;
     switch (error_code) {
-        case 200: result = "200 OK"; break;
-        case 400: result = "400 Bad Request"; break;
-        case 500: result = "500 Internal Server Error"; break;
-        default : result = "501 Not Implemented"; break;
+        case 200: return "200 OK";
+        case 400: return "400 Bad Request";
+        case 404: return "404 Resource not found";
+        case 500: return "500 Internal Server Error";
+        default : return "501 Not Implemented";
     }
-    return result;
 }
 
 void http_service::respond_error(peer_connection & conn, int error_code)
@@ -235,15 +239,6 @@ void http_server::register_services_from_config(std::string config_file)
     // TO DO
 }
 
-void http_server::run()
-{
-    while( true ) {
-        peer_connection c = accept_connection();
-        http_request request(c.receive_string());
-        dispatch_service(request, c);
-    }
-}
-
 void http_server::dispatch_service(http_request const & request, peer_connection & conn)
 {
     // TO DO: use thread_pool
@@ -269,6 +264,24 @@ void http_server::dispatch_service(http_request const & request, peer_connection
         http_service s;	
         s.do_service(conn, request);
     }
+}
+
+void http_server::service_fn(peer_connection & conn)
+{
+    http_request request = conn.receive_string();
+#ifdef DEBUG
+    std::cout << "Request from " << conn.get_peer_node()
+              << ":" << conn.get_peer_port() << std::endl;
+    std::cout << "Method: " << request.method() << std::endl
+              << "Resource: " << request.url() << std::endl
+              << "Protocol: " << request.version() << std::endl << std::endl;
+    std::cout << "Headers: " << std::endl;
+    for (auto & h : request.headers())
+        std::cout << h.first << ": " << h.second << std::endl;
+    std::cout << std::endl << "Body: " << std::endl;
+    std::cout << request.body() << std::endl;
+#endif
+    dispatch_service(request, conn);
 }
 
 // vim: set tabstop=4 shiftwidth=4 expandtab: 

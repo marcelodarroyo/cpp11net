@@ -83,7 +83,8 @@ public:
     http_server(std::string node, std::string port, std::string files_dir=".");
     void register_service(std::string resource, http_service service);
     void register_services_from_config(std::string config_file);
-    void run();
+
+    void service_fn(peer_connection & conn);
 
 protected:
 

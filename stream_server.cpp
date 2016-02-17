@@ -14,8 +14,27 @@
 #include <arpa/inet.h>   // for struct inet_addr
 #include <netdb.h>       // for hostent (DNS search service)
 #include <algorithm>     // for std::max
+#include <iostream>
 
 #include "stream_server.hpp"
+
+#ifdef UNIX
+static int interrupted = 0;
+static void signal_handler (int signal_value)
+{
+    interrupted = 1;
+}
+
+static void catch_signals (void)
+{
+    struct sigaction action;
+    action.sa_handler = signal_handler;
+    action.sa_flags = 0;
+    sigemptyset (&action.sa_mask);
+    sigaction (SIGINT, &action, NULL);
+    sigaction (SIGTERM, &action, NULL);
+}
+#endif
 
 //=======================================================================================
 // peer_connection implementation
@@ -27,12 +46,7 @@ peer_connection & peer_connection::operator=(peer_connection & other)
    peer_port = other.get_peer_port();
    return *this;
 }
-
-int peer_connection::send(char* data, size_t count)
-{
-   return write(s, data, count);
-}
-
+	
 int peer_connection::send(std::vector<unsigned char> data)
 {
    return write(s, data.data(), data.size());
@@ -41,11 +55,6 @@ int peer_connection::send(std::vector<unsigned char> data)
 int peer_connection::send(std::string data)
 {
    return write(s, data.c_str(), data.size());
-}
-
-int peer_connection::receive(char * buffer, size_t count)
-{
-    return read(s, buffer, count);
 }
 
 std::vector<unsigned char> peer_connection::receive(int max_length)
@@ -58,8 +67,9 @@ std::vector<unsigned char> peer_connection::receive(int max_length)
 
 std::string peer_connection::receive_string(int max_length)
 {
-   char buf[max_length];
-   int n = read(s, buf, max_length); 
+   int size = std::max(max_length, 65000);
+   char buf[size];
+   int n = read(s, buf, size);
    return std::string(buf, std::max(n,0));
 }
 
@@ -126,19 +136,32 @@ peer_connection stream_server::accept_connection()
     return peer_connection(cs, host, service);
 }
 
-//=======================================================================================
-// utilities
-//=======================================================================================
-void launch_service(peer_connection & c, service_fun_t service)
+void stream_server::run()
 {
-    if ( fork() == 0 ) {
-        // in child process
-        service(c);
-        exit(0);
-	}
-    else
-        // in parent process, reap zombies
-        signal(SIGCHLD,SIG_IGN);
+#ifdef UNIX
+    catch_signals();
+#endif
+    while(true) {
+        if (interrupted) {
+            std::cout << "Interrupted..." << std::endl;
+            break;
+        }
+        peer_connection conn = accept_connection();
+        if (interrupted) {
+            std::cout << "Interrupted..." << std::endl;
+            break;
+        }
+        service_fn(conn);
+    }
+    disconnect();
 }
 
-// vim: set tabstop=4 shiftwidth=4 expandtab:
+// Default service function
+void stream_server::service_fn(peer_connection & conn)
+{
+    std::cout << "Connected with" << conn.get_peer_node() << ':' 
+              << conn.get_peer_port() << std::endl;
+    std::string s = conn.receive_string();
+    std::cout << "Received from client:" << s << std::endl;
+    conn.send("OK");
+}

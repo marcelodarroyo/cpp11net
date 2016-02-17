@@ -1,4 +1,4 @@
-CPP_FLAGS := -std=c++11 -Wfatal-errors
+CPP_FLAGS := -DUNIX -DDEBUG -std=c++11 -Wfatal-errors
 
 all: stream_server_example http_server_example tcp_client
 

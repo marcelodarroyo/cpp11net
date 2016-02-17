@@ -8,6 +8,7 @@
 #include <string>
 #include <ctype.h>	// for toupper(), isdigit(), ...
 #include <fstream>
+#include <iostream>
 
 #include "http_server.hpp"
 
@@ -72,6 +73,9 @@ std::string http_request::mime() const
     if ( _url.find(".html") != std::string::npos )
         mime_type = "text/html; charset=UTF-8";
     else
+    if ( _url.find(".md") != std::string::npos )
+        mime_type = "text/markdown";
+    else 
     if ( _url.find(".css") != std::string::npos )
         mime_type = "text/css";
     else
@@ -143,11 +147,19 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
 {
     std::string resource = request.path();
     std::string mime = request.mime();
+    auto npos = std::string::npos;
+    bool is_text_file = mime.find("text") != npos || 
+	                mime.find("xml") != npos  ||
+			mime.find("javascript") != npos;
 
     if (resource == "/")
         resource = "index.html";
+
+    std::cout << "Serving static file: " << files_dir + resource
+              << " Resource: " << resource << " Mime: " << mime << std::endl;
+
     // get filesize
-    std::ifstream f(files_dir + resource, std::ifstream::ate | std::ifstream::binary);
+    std::ifstream f(files_dir + resource, std::ifstream::ate);
     if ( ! f.is_open() ) {
         respond_error(conn, 404);
         return;
@@ -156,7 +168,7 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
     f.close();
 
     // open for reading
-    f.open( files_dir + resource, std::ifstream::in | std::ifstream::binary);
+    f.open( files_dir + resource, std::ifstream::in | is_text_file? 0: std::ifstream::binary);
     if ( ! f.is_open() ) {
         respond_error(conn, 404);
         return;
@@ -171,12 +183,12 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
     send_response(conn, "HTTP/1.1", 200, headers);
 
     // send body (file content)
-    while ( ! f.eof() ) {
+    do {
         const unsigned int buf_size = 4096;
         char buffer[buf_size];
         f.read(buffer,buf_size);
         conn.send(buffer, f.gcount());
-    }
+    } while ( f.gcount() > 0 );
     f.close();
 }
 
@@ -220,7 +232,8 @@ void http_service::send_response(peer_connection & conn,
 //=============================================================================
 // http_server class implementation
 //=============================================================================
-http_server::http_server(std::string node, std::string port)
+http_server::http_server(std::string node, std::string port, std::string files_dir)
+    : static_files_dir(files_dir)
 {
     bind_to(AF_INET, node, port);
 }
@@ -266,7 +279,7 @@ void http_server::dispatch_service(http_request const & request, peer_connection
         service->second.do_service(conn,request);
     else {
         // dispatch default service
-        http_service s;	
+        http_service s(static_files_dir);
         s.do_service(conn, request);
     }
 }

@@ -55,7 +55,8 @@ private:
 class http_service {
 
 public:
-    http_service(std::string default_files_dir = "./")
+
+    http_service(std::string default_files_dir = ".")
         : files_dir(default_files_dir)
         {}
 
@@ -79,7 +80,7 @@ class http_server : public stream_server {
 public:
 	
     // Bind to IP address (node) and service (port)
-    http_server(std::string node, std::string port);
+    http_server(std::string node, std::string port, std::string files_dir=".");
     void register_service(std::string resource, http_service service);
     void register_services_from_config(std::string config_file);
     void run();
@@ -89,6 +90,7 @@ protected:
     void dispatch_service(http_request const & request, peer_connection & conn);
     
     std::map<std::string, http_service> services; // services registry
+    std::string static_files_dir;
 };
 
 #endif

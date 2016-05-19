@@ -45,30 +45,7 @@ std::string http_service::get_error_code_str(int error_code)
     }
 }
 
-void http_service::respond_error(peer_connection & conn, int error_code)
-{
-    std::map<std::string, std::string> headers;
-    headers["Connection"] = "close";
-    headers["Content-Type"] = "text/html; charset=UTF-8";
-    std::string body = "<html><head></head><body><p>" +
-                       get_error_code_str(error_code) +
-                       "</p></body></html>";
-    headers["Content-Length"] = std::to_string( body.length() );
-    send_response(conn, "HTTP/1.1", error_code, headers, body);
-}
 
-void http_service::send_response(peer_connection & conn,
-                                 std::string protocol, int error_code,
-                                 std::map< std::string, std::string > const & headers,
-                                 std::string body)
-{
-    std::string response = protocol + ' ' + get_error_code_str(error_code)  + END_LINE;
-    response += server_header() + END_LINE; 
-    for (auto h : headers)
-        response += h.first + ": " + h.second + END_LINE;
-    response += END_LINE + body;
-    conn.send(response);
-}
 
 //=============================================================================
 // http_server class implementation

@@ -1,6 +1,31 @@
 #include "http_service.hpp"
 #include <iostream>
 
+void http_service::respond_error(peer_connection & conn, int error_code)
+{
+    std::map<std::string, std::string> headers;
+    headers["Connection"] = "close";
+    headers["Content-Type"] = "text/html; charset=UTF-8";
+    std::string body = "<html><head></head><body><p>" +
+                       get_error_code_str(error_code) +
+                       "</p></body></html>";
+    headers["Content-Length"] = std::to_string( body.length() );
+    send_response(conn, "HTTP/1.1", error_code, headers, body);
+}
+
+void http_service::send_response(peer_connection & conn,
+                                 std::string protocol, int error_code,
+                                 std::map< std::string, std::string > const & headers,
+                                 std::string body)
+{
+    std::string response = protocol + ' ' + get_error_code_str(error_code)  + END_LINE;
+    response += server_header() + END_LINE; 
+    for (auto h : headers)
+        response += h.first + ": " + h.second + END_LINE;
+    response += END_LINE + body;
+    conn.send(response);
+}
+
 // Handle GET command
 void http_service::get(peer_connection & conn, const http_request & request)
 {
@@ -10,20 +35,23 @@ void http_service::get(peer_connection & conn, const http_request & request)
         resource = "index.html";
 
     std::cout << "Serving static file: " << files_dir + resource
-              << " Resource: " << resource << " mime: " << request.mime() << std::endl;
+              << " mime: " << request.mime() << std::endl;
 
     // get filesize
-    std::ifstream f(files_dir + resource, std::ifstream::ate);
+    std::ifstream f(files_dir + resource, std::ifstream::binary);
     if ( ! f.is_open() ) {
+	std::cerr << "Error 1: Can't open file " << files_dir << resource << '\n';
         respond_error(conn, 404);
         return;
     }
+    f.seekg(0, f.end);
     std::ifstream::pos_type file_size = f.tellg();
     f.close();
 
     // open for reading
-    f.open( files_dir + resource, std::ifstream::in);
+    f.open(files_dir + resource, std::ifstream::binary);
     if ( ! f.is_open() ) {
+	std::cerr << "Error 2: Can't open file " << files_dir << resource << '\n';
         respond_error(conn, 404);
         return;
     }

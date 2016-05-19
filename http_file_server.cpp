@@ -7,7 +7,7 @@
 
 int main()
 {
-	http_server server("localhost", "8080");
+	http_server server("192.168.128.118", "8080");
 	std::cout << "Listening on port 8080...\n";
 	server.run();
 	return 0;

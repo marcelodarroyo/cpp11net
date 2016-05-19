@@ -15,7 +15,7 @@ int main(int argc, char * argv[])
     if ( argc == 3 )
         port = argv[2];
        
-    http_server server("192.168.128.118", port);
+    http_server server( argv[1], port);
     std::cout << "Listening on " << argv[1] << ':' << port << " ..." << std::endl;
     server.run();
     return 0;

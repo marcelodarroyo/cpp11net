@@ -11,49 +11,14 @@
 
 #include "http_server.hpp"
 
-//====================================================================================
-// Request dispatcher
-//====================================================================================
-void http_service::do_service(peer_connection & conn, const http_request & request)
-{
-    std::string method = request.method();
-    
-    if ( method == "GET" )
-        get(conn, request);
-    else if ( method == "PUT" )
-        put(conn, request);
-    else if ( method == "POST" )
-        post(conn, request);
-    else if ( method == "HEAD" )
-        head(conn, request);
-    else if ( method == "DELETE")
-        del(conn, request);
-    else if ( method == "OPTIONS")
-        options(conn, request);
-    else
-        respond_error(conn, 501);
-}
-
-std::string http_service::get_error_code_str(int error_code)
-{
-    switch (error_code) {
-        case 200: return "200 OK";
-        case 400: return "400 Bad Request";
-        case 404: return "404 Resource not found";
-        case 500: return "500 Internal Server Error";
-        default : return "501 Not Implemented";
-    }
-}
-
-
-
 //=============================================================================
 // http_server class implementation
 //=============================================================================
 http_server::http_server(std::string node, std::string port, std::string files_dir)
     : static_files_dir(files_dir)
 {
-    bind_to(AF_INET, node, port);
+    if ( ! bind_to(AF_INET, node, port) )
+        std::cerr << "Bind error..." << std::endl;
 }
 
 void http_server::register_service(std::string resource, http_service service)

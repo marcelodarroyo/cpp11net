@@ -5,10 +5,20 @@
 #include <iostream>
 #include "http_server.hpp"
 
-int main()
+int main(int argc, char * argv[])
 {
-	http_server server("192.168.128.118", "8080");
-	std::cout << "Listening on port 8080...\n";
-	server.run();
-	return 0;
+    if ( argc < 2 ) {
+        std::cerr << "Usage: " << argv[0] << " host [port]" << std::endl;
+        return -1;
+    }
+    std::string port = "8080";
+    if ( argc == 3 )
+        port = argv[2];
+       
+    http_server server("192.168.128.118", port);
+    std::cout << "Listening on " << argv[1] << ':' << port << " ..." << std::endl;
+    server.run();
+    return 0;
 }
+
+// vim: tabstop=4 expandtab:

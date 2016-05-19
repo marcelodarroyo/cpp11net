@@ -1,6 +1,37 @@
 #include "http_service.hpp"
 #include <iostream>
 
+void http_service::do_service(peer_connection & conn, const http_request & request)
+{
+    std::string method = request.method();
+    
+    if ( method == "GET" )
+        get(conn, request);
+    else if ( method == "PUT" )
+        put(conn, request);
+    else if ( method == "POST" )
+        post(conn, request);
+    else if ( method == "HEAD" )
+        head(conn, request);
+    else if ( method == "DELETE")
+        del(conn, request);
+    else if ( method == "OPTIONS")
+        options(conn, request);
+    else
+        respond_error(conn, 501);
+}
+
+std::string http_service::get_error_code_str(int error_code)
+{
+    switch (error_code) {
+        case 200: return "200 OK";
+        case 400: return "400 Bad Request";
+        case 404: return "404 Resource not found";
+        case 500: return "500 Internal Server Error";
+        default : return "501 Not Implemented";
+    }
+}
+
 void http_service::respond_error(peer_connection & conn, int error_code)
 {
     std::map<std::string, std::string> headers;

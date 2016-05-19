@@ -10,7 +10,8 @@
 #include "stream_server.hpp"
 
 //=============================================================================
-// http request
+// http request class: Represents a http request and contains parsing functions
+// for getting request parts.
 //=============================================================================
 class http_request {
 	
@@ -50,26 +51,39 @@ private:
 };
 
 //=============================================================================
-// An http service (base class). Default behaviour: serve static files
+// An http service (base class). Default behaviour: serve static files with
+// uploading and files listing support
 //=============================================================================
 class http_service {
 
 public:
-
     http_service(std::string default_files_dir = ".")
         : files_dir(default_files_dir)
         {}
 
     virtual void do_service(peer_connection & conn, const http_request & request);
+
     std::string get_error_code_str(int error_code); 
 
-protected:
+protected:    
+    // Special GET files-list request. Responds with a JSON list of file names.
+    // It support a "suffix" query. 
+    // Example: GET files-list?suffix=json (output is JSON of "ls *.json")
+    void files_list(peer_connection & conn, const http_request & request);
+
+    // Uploading files support with PUT HTTP command
+    void handle_put(peer_connection & conn, const http_request & request);
+
+    // Helper function to build and send an HTTP successfull response
     void send_response(peer_connection & conn,
     	               std::string protocol, int error_code,
                        std::map< std::string, std::string > const & headers, 
                        std::string body="");
 
+    // Helper function to build and send an HTTP error response
     void respond_error(peer_connection & conn, int error_code);
+
+    // Default working directory (default: server's current directory)
     std::string files_dir;
 };
 
@@ -84,16 +98,21 @@ public:
     void register_service(std::string resource, http_service service);
     void register_services_from_config(std::string config_file);
 
+    // The service wrapper
     void service_fn(peer_connection & conn);
 
 protected:
 
+    // Service dispatcher
     void dispatch_service(http_request const & request, peer_connection & conn);
     
-    std::map<std::string, http_service> services; // services registry
+    // Registered services storage
+    std::map<std::string, http_service> services;
+
+    // Working directory
     std::string static_files_dir;
 };
 
 #endif
 
-// vim: set tabstop=4 shiftwidth=4 expandtab
+// vim: set tabstop=4 shiftwidth=4 expandtab:

@@ -38,10 +38,12 @@ public:
     std::string get_peer_port() const { return peer_port; }
     
     // send data, return bytes sent
+    int send(char data[], int count);
     int send(std::vector<unsigned char> data);
     int send(std::string data);
     
     // receive data
+    int receive(char *data, int count);
     std::vector<unsigned char> receive(int max_length=4096);
     std::string receive_string(int max_length=4096);
 	
@@ -91,3 +93,5 @@ protected:
 };
 
 #endif
+
+// vim: tabstop=4 expandtab :

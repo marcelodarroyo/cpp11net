@@ -121,7 +121,7 @@ std::map<std::string,std::string> http_request::query() const
     std::string::size_type begin_pos = _url.find("?"), 
                            end_pos = _url.find("=");
     while ( begin_pos < _url.length() ) {
-        std::string q = _url.substr(begin_pos+1, end_pos);
+        std::string q = _url.substr(begin_pos + 1, end_pos);
         std::string v;
         if ( end_pos != std::string::npos ) {
             begin_pos = end_pos + 1;
@@ -141,17 +141,100 @@ std::string http_request::header(std::string key) const
 }
 
 //=============================================================================
-// default http_service (static file service)
+// default http_service (static file service and run commands)
 //=============================================================================
+
+// files query service: /list?suffix=...
+// Returns JSON array with file names
+void http_service::files_list(peer_connection & conn, const http_request & request)
+{
+    FILE * cmd_output;
+    char buffer[255];
+    std::string sep = "";
+    std::string response_body = "[";
+    std::map<std::string,std::string> query = request.query();
+    std::string suffix = query["suffix"];
+    std::string cmd;
+    if ( suffix.empty() )
+        suffix = "*";
+#ifdef MSWINDOWS
+    cmd ="dir *." + suffix; 
+    cmd_output = _popen(cmd.c_str(), "r");
+#else
+    cmd = "ls *." + suffix;
+    cmd_output = popen(cmd.c_str(), "r");
+#endif
+    if ( ! cmd_output ) {
+        respond_error(conn, 500);
+        return;
+    }
+    while ( fgets(buffer, sizeof(buffer), cmd_output) ) {
+        int len = strnlen(buffer, 254);
+        // remove trailing new line
+        if ( buffer[len-1] == '\n' )
+            buffer[len-1] = 0;
+        response_body += sep + '"' + buffer + '"';
+        sep = ",";
+    }
+    response_body += ']';
+    // send response
+    std::map<std::string, std::string> headers;
+    headers["Server"] = "Simple HTTP server 1.0";
+    headers["Content-Type"] = "text/plain; charset=UTF-8";
+    headers["Content-Length"] = std::to_string(response_body.length());
+    
+    send_response(conn, "HTTP/1.1", 200, headers, response_body);
+}
+
+// PUT request: Create file with body request data
+void http_service::handle_put(peer_connection & conn, const http_request & request)
+{
+    std::cout << "PUT request: Creating " << files_dir << request.path() 
+              << " file..." << std::endl;
+
+    std::ofstream f(files_dir + request.path(), std::ofstream::out);
+    f << request.body();
+    f.close();
+
+    // build response
+    std::map<std::string, std::string> headers;
+    headers["Server"] = "Simple HTTP server 1.0";
+    headers["Content-Type"] = "text/plain; charset=UTF-8";
+    headers["Content-Length"] = "2";
+    
+    send_response(conn, "HTTP/1.1", 200, headers, "OK");
+}
+
+//====================================================================================
+// Main file service method.
+// HTTP GET for fetching files,
+// HTTP PUT for uploading files
+// Special GET resource:   file-list
+// file-list suffix query: file-list?suffix=json
+//====================================================================================
 void http_service::do_service(peer_connection & conn, const http_request & request)
 {
+    std::string method = request.method();
     std::string resource = request.path();
     std::string mime = request.mime();
     auto npos = std::string::npos;
     bool is_text_file = mime.find("text") != npos || 
-	                mime.find("xml") != npos  ||
-			mime.find("javascript") != npos;
+	                    mime.find("xml") != npos  ||
+			            mime.find("javascript") != npos;
 
+    // Handle PUT request
+    if ( method == "PUT" ) {
+        handle_put(conn, request);
+        return;
+    }
+
+    // Handle command execution
+    if ( method == "GET" and  resource == "files-list" ) {
+        files_list(conn,request);
+        return;
+    }
+        
+    // Handle GET file resource request
     if (request.method() != "GET")
         respond_error(conn, 501);
 
@@ -180,7 +263,7 @@ void http_service::do_service(peer_connection & conn, const http_request & reque
     // build response
     std::map<std::string, std::string> headers;
     headers["Server"] = "Simple HTTP server 1.0";
-    headers["Content-Type"] = "text/html; charset=UTF-8";
+    headers["Content-Type"] = mime + "; charset=UTF-8";
     headers["Content-Length"] = std::to_string(file_size);
     
     send_response(conn, "HTTP/1.1", 200, headers);
@@ -215,7 +298,7 @@ void http_service::respond_error(peer_connection & conn, int error_code)
     std::string body = "<html><head></head><body><p>" +
                        get_error_code_str(error_code) +
                        "</p></body></html>";
-    headers["Content-Length"] = std::to_string(body.length());
+    headers["Content-Length"] = std::to_string( body.length() );
     send_response(conn, "HTTP/1.1", error_code, headers, body);
 }
 
@@ -264,7 +347,7 @@ void http_server::dispatch_service(http_request const & request, peer_connection
         if ( ! isdigit(path[pos]) )
             ends_with_number = false; 
     if (ends_with_number)
-      path.replace(last_slash_pos + 1, path.length() - last_slash_pos - 1, "{number}");
+        path.replace(last_slash_pos + 1, path.length() - last_slash_pos - 1, "{number}");
     
     auto service = services.find(path);
     if ( service != services.end() )

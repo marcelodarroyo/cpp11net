@@ -47,6 +47,11 @@ peer_connection & peer_connection::operator=(peer_connection & other)
    return *this;
 }
 	
+int peer_connection::send(char data[], int count)
+{
+    return write(s, data, count);
+}
+
 int peer_connection::send(std::vector<unsigned char> data)
 {
    return write(s, data.data(), data.size());
@@ -55,6 +60,11 @@ int peer_connection::send(std::vector<unsigned char> data)
 int peer_connection::send(std::string data)
 {
    return write(s, data.c_str(), data.size());
+}
+
+int peer_connection::receive(char *data, int count)
+{
+    return read(s, data, count);
 }
 
 std::vector<unsigned char> peer_connection::receive(int max_length)

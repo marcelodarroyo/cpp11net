@@ -111,20 +111,23 @@ bool stream_server::bind_to(sa_family_t family, std::string node, std::string se
             continue;
 
         if (bind(s, rp->ai_addr, rp->ai_addrlen) == 0) {
-	    char node_buf[NI_MAXHOST];
+	        char node_buf[NI_MAXHOST];
             char service_buf[NI_MAXSERV];
 		
             getnameinfo(rp->ai_addr, rp->ai_addrlen, node_buf, NI_MAXHOST,
                         service_buf, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
-	    this->node = node_buf; this->service = service_buf;
+	        this->node = node_buf; this->service = service_buf;
             break; // success
-        }
+        } 
         close(s);
     }
 
-    freeaddrinfo(result);
+    if ( rp == 0 )
+        std::cout << "Bind error" << std::endl;
+   
+     freeaddrinfo(result);
   
-    if ( listen(s,10) == -1 ) {
+    if ( listen(s,5) == -1 ) {
         close(s);
 	std::cerr << "Listen error..." << std::endl;
         return false;

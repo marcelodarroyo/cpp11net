@@ -126,6 +126,7 @@ bool stream_server::bind_to(sa_family_t family, std::string node, std::string se
   
     if ( listen(s,10) == -1 ) {
         close(s);
+	std::cerr << "Listen error..." << std::endl;
         return false;
     }
     

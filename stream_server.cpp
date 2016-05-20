@@ -117,23 +117,21 @@ bool stream_server::bind_to(sa_family_t family, std::string node, std::string se
             getnameinfo(rp->ai_addr, rp->ai_addrlen, node_buf, NI_MAXHOST,
                         service_buf, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
 	        this->node = node_buf; this->service = service_buf;
+            binded = true;
             break; // success
         } 
         close(s);
     }
-
-    if ( rp == 0 )
-        std::cout << "Bind error" << std::endl;
    
-     freeaddrinfo(result);
+    freeaddrinfo(result);
   
     if ( listen(s,5) == -1 ) {
         close(s);
-	std::cerr << "Listen error..." << std::endl;
-        return false;
+        binded = false;
+        std::cerr << "Listen error..." << std::endl;
     }
     
-    return rp != 0;
+    return binded;
 }
 
 peer_connection stream_server::accept_connection()

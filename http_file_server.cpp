@@ -15,9 +15,13 @@ int main(int argc, char * argv[])
     if ( argc == 3 )
         port = argv[2];
        
-    http_server server( argv[1], port);
-    std::cout << "Listening on " << argv[1] << ':' << port << " ..." << std::endl;
-    server.run();
+    http_server server(argv[1], port);
+    if ( server.ready() ) {
+        std::cout << "Listening on " << argv[1] << ':' << port << " ..." << std::endl;
+        server.run();
+    }
+    else
+        std::cerr << "Error binding address." << std::endl;
     return 0;
 }
 

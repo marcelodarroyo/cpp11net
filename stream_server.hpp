@@ -66,7 +66,7 @@ class stream_server {
 public:
     
 	// Families suported: AF_UNIX, AF_INET, ...
-    stream_server() : s(-1) {}
+    stream_server() : s(-1), binded(false) {}
     
     // Destructor: it disconnect if connection is alive
     virtual ~stream_server() { disconnect(); }
@@ -82,6 +82,8 @@ public:
 	
     void disconnect() { if (s != -1) { close(s); s=-1; } }
 
+    bool ready() const { return binded; }
+
     void run();
 
     virtual void service_fn(peer_connection & conn);
@@ -90,6 +92,7 @@ protected:
     int s; 			// socket
         std::string node,       // binded node (address)
                     service;	// binded service (port)
+    bool binded;
 };
 
 #endif

@@ -69,9 +69,9 @@ void http_service::get(peer_connection & conn, const http_request & request)
               << " mime: " << request.mime() << std::endl;
 
     // get filesize
-    std::ifstream f(files_dir + resource, std::ifstream::binary);
+    std::ifstream f(files_dir + resource, std::ifstream::in | std::ifstream::binary);
     if ( ! f.is_open() ) {
-	std::cerr << "Error 1: Can't open file " << files_dir << resource << '\n';
+        std::cerr << "Error 1: Can't open file " << files_dir << resource << '\n';
         respond_error(conn, 404);
         return;
     }
@@ -80,9 +80,9 @@ void http_service::get(peer_connection & conn, const http_request & request)
     f.close();
 
     // open for reading
-    f.open(files_dir + resource, std::ifstream::binary);
+    f.open(files_dir + resource, std::ifstream::in);
     if ( ! f.is_open() ) {
-	std::cerr << "Error 2: Can't open file " << files_dir << resource << '\n';
+        std::cerr << "Error 2: Can't open file " << files_dir << resource << '\n';
         respond_error(conn, 404);
         return;
     }

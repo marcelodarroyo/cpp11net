@@ -24,19 +24,21 @@ std::string get_substring(const std::string & str, size_t & pos, std::string end
     size_t from = pos;
     std::string result;
     pos = str.find(end_mark, pos);
-    if ( pos != std::string::npos )
+    if ( pos != std::string::npos ) {
         result = str.substr(from, pos - from);
-    pos += end_mark.length();
+        pos += end_mark.length();
+    }
     return result;
 }
 
 void http_request::parse_request(const std::string & request)
 {
-    _valid_request = true;
     size_t pos = 0;
     if ( parse_method(request, pos) )
-        if ( parse_headers(request, pos) )
+        if ( parse_headers(request, pos) ) {
             _body = request.substr(pos);
+            _valid_request = true;
+        }
 }
 
 bool http_request::parse_method(const std::string & request, size_t & pos)

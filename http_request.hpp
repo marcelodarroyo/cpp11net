@@ -16,7 +16,10 @@ class http_request {
 public:
 	
     http_request() : _valid_request(false) { }
-    http_request(const std::string & request) { parse_request(request); }
+    http_request(const std::string & request) { 
+        if ( request.length() > 0 )
+            parse_request(request); 
+    }
 
     std::string method() const { return _method; }
     std::string version() const { return _version; }

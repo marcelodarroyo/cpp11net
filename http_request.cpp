@@ -4,6 +4,9 @@
 
 #include "http_request.hpp"
 
+// HTTP end line
+#define END_LINE "\r\n"
+
 // files suffix - mime type binding
 std::map< std::string, std::string > mime_types = {
     { ".txt",  "text/plain; charset=UTF-8" },
@@ -41,12 +44,12 @@ void http_request::parse_request(const std::string & request)
         }
 }
 
+// Parse a line with the form: COMMAND resource version
 bool http_request::parse_method(const std::string & request, size_t & pos)
 {	
     _method = get_substring(request, pos, " ");
     for (auto & c : _method)
         c = toupper(c);
-    // TO DO: Change to use a hash to check valid method
     if ( _method == "GET" || _method == "HEAD" || _method == "POST" || _method == "PUT" || 
          _method == "DELETE" || _method == "TRACE" || _method == "OPTIONS" ) {
         _url = get_substring(request, pos, " ");
@@ -73,17 +76,21 @@ bool http_request::parse_headers(const std::string & request, size_t & pos)
 
 std::string http_request::mime() const
 {
-    auto it = mime_types.find( _url.substr( _url.find_last_of(".") )); 
+    auto last_point_pos = _url.find_last_of(".");
+    std::string suffix;
+    if ( last_point_pos != std::string::npos )
+        suffix = _url.substr( last_point_pos );
+    auto it = mime_types.find( suffix ); 
     return it != mime_types.end() ? it->second : "application/octet-stream";
 }
 
 std::string http_request::path() const
 {
     std::string::size_type begin_pos = _url.find("/"), 
-                           end_pos = _url.find("?"),
+                           end_pos   = _url.find("?"),
                            count;
     // skip protocol (if exist)
-    if ( begin_pos != std::string::npos && _url[begin_pos-1] == ':' )
+    if ( begin_pos > 0 && begin_pos < _url.length() && _url[begin_pos-1] == ':' )
         begin_pos = _url.find("/", begin_pos + 2 );
     count = (end_pos != std::string::npos)? end_pos - begin_pos : end_pos;
     return _url.substr(begin_pos, count);
